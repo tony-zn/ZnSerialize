@@ -193,11 +193,11 @@ namespace zn_serialize
     template<typename t>
     const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::multiset<t>& v) { return deserialize_set(begin, end, v); }
     template<typename t>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::stack<t>& v) { throw Exception("serialize failed, not allowed on statck"); }
+    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::stack<t>& v) { throw Exception("deserialize failed, not allowed on statck"); }
     template<typename t>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::queue<t>& v) { throw Exception("serialize failed, not allowed on queue"); }
+    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::queue<t>& v) { throw Exception("deserialize failed, not allowed on queue"); }
     template<typename t>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::priority_queue<t>& v) { throw Exception("serialize failed, not allowed on priority_queue"); }
+    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::priority_queue<t>& v) { throw Exception("deserialize failed, not allowed on priority_queue"); }
     template<typename k, typename t>
     const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::map<k, t>& v) { return deserialize_map(begin, end, v); }
     template<typename k, typename t>
