@@ -5,8 +5,10 @@
 今天突然有个思路用可变参模板实现一个通用的好像很简单，就卷起袖子撸了一下，发现200多行就实现了功能。
 整个代码简单，因为都是用的基本语法与标准库，所以也没有平台限制
 现支持：基本类型，数组，stl中的string和各种容器（stack,queue,priority_queue因无数据操作的接口无法支持）
-如需要扩展自己的类型只需要对函数模板进行特化，
+如需要扩展自己的类型只需要对函数模板进行特化
+
 如:有一个Custom的类型需要扩展，只需要特化:
+
 template<>
 void zn_serialize::serialize(ZnSerializeBuffer& out, const Custom& v)
 {
