@@ -33,7 +33,7 @@ namespace zn_serialize
     template<typename child_t, typename parent_t, typename...args>
     struct Parent : public parent_t, public Parent<Parent<child_t, parent_t, args...>, args...>
     {
-        typedef Parent<child_t, parent_t, args...> parent_pack_t;
+        typedef Parent<child_t, parent_t, args...>   parent_pack_t;
     protected:
         void parent_serialize(child_t* child, ZnSerializeBuffer& buffer)
         {
@@ -105,6 +105,31 @@ namespace zn_serialize
         v.assign(p, p + size);
         return p + size;
     }
+
+    template<typename t, uint32_t s>
+    void serialize(ZnSerializeBuffer& out, const t(&v)[s])
+    {
+        uint32_t size = s;
+        out.insert(out.end(), reinterpret_cast<const uint8_t*>(&size), reinterpret_cast<const uint8_t*>(&size) + sizeof(size));
+        for (uint32_t i = 0; i < size; ++i)
+            serialize(out, v[i]);
+    }
+
+    template<typename t, uint32_t s>
+    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, t(&v)[s])
+    {
+        if (begin + sizeof(uint32_t) > end)
+            throw Exception("deserialize string failed, out of memery");
+        auto p = begin;
+        uint32_t size = *reinterpret_cast<const uint32_t*>(p);
+        if (size != s)
+            throw Exception("deserialize array failed, size mismatch");
+        p += sizeof(uint32_t);
+        for (uint32_t i = 0; i < size; ++i)
+            p = deserialize(p, end, v[i]);
+        return p;
+    }
+
 
     template<>
     void serialize(ZnSerializeBuffer& out, const Struct& v)
