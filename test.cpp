@@ -87,9 +87,53 @@ void test2()
     a2.deserialize(buf);
 }
 
+// 测试数据结构的继承
+ZN_STRUCT(Parent)
+{
+    int aaa;
+    ZN_SERIALIZE(aaa);
+};
+
+ZN_STRUCT_CHILD(Child, Parent, All)
+{
+    std::string name;
+    ZN_SERIALIZE_CHILD(name);
+};
+
+
+void test3()
+{
+    Child a;
+    a.aaa = 20;
+    a.name = "test3";
+
+    Item i;
+    i.a.a = 10;
+    i.a.b = 900.99;
+    i.a.c = 12.12f;
+    i.a.d = "test serialize 1";
+    i.b.a = 20;
+    i.b.b = 200.22;
+    i.b.c = 9.9f;
+    i.b.d = "test serialize 2";
+
+    a.a.push_back(i);
+    a.b.push_back(i);
+    a.c.push_back(i);
+    a.d.insert(i);
+    a.e.insert(i);
+    a.f["test"] = i;
+    a.g.insert(std::make_pair(i, 100));
+    ZnSerializeBuffer buf;
+    a.serialize(buf);
+    Child a2;
+    a2.deserialize(buf);
+}
+
 int main()
 {
     test1();
     test2();
+    test3();
     return 0;
 }
