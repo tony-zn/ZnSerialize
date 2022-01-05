@@ -65,7 +65,7 @@ namespace zn_serialize
     template<typename t>
     void serialize(ZnSerializeBuffer& out, const t& v)
     {
-        size_t size = sizeof(v);
+        uint32_t size = sizeof(v);
         out.insert(out.end(), reinterpret_cast<const uint8_t*>(&size), reinterpret_cast<const uint8_t*>(&size) + sizeof(size));
         out.insert(out.end(), reinterpret_cast<const uint8_t*>(&v), reinterpret_cast<const uint8_t*>(&v) + size);
     }
@@ -73,11 +73,11 @@ namespace zn_serialize
     template<typename t>
     const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, t& v)
     {
-        if (begin + sizeof(size_t) > end)
+        if (begin + sizeof(uint32_t) > end)
             throw Exception("deserialize value failed, out of memery");
         auto p = begin;
-        size_t size = *reinterpret_cast<const size_t*>(p);
-        p += sizeof(size_t);
+        uint32_t size = *reinterpret_cast<const uint32_t*>(p);
+        p += sizeof(uint32_t);
         if (size != sizeof(v) || p + size > end)
             throw Exception("deserialize value failed, out of memery");
         v = *reinterpret_cast<const t*>(p);
@@ -87,7 +87,7 @@ namespace zn_serialize
     template<>
     void serialize(ZnSerializeBuffer& out, const std::string& v)
     {
-        size_t size = v.size();
+        uint32_t size = v.size();
         out.insert(out.end(), reinterpret_cast<const uint8_t*>(&size), reinterpret_cast<const uint8_t*>(&size) + sizeof(size));
         out.insert(out.end(), reinterpret_cast<const uint8_t*>(v.data()), reinterpret_cast<const uint8_t*>(v.data()) + size);
     }
@@ -95,11 +95,11 @@ namespace zn_serialize
     template<>
     const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::string& v)
     {
-        if (begin + sizeof(size_t) > end)
+        if (begin + sizeof(uint32_t) > end)
             throw Exception("deserialize string failed, out of memery");
         auto p = begin;
-        size_t size = *reinterpret_cast<const size_t*>(p);
-        p += sizeof(size_t);
+        uint32_t size = *reinterpret_cast<const uint32_t*>(p);
+        p += sizeof(uint32_t);
         if (p + size > end)
             throw Exception("deserialize string failed, out of memery");
         v.assign(p, p + size);
@@ -121,7 +121,7 @@ namespace zn_serialize
     template<typename t>
     void serialize_container(ZnSerializeBuffer& out, const t& v)
     {
-        size_t size = v.size();
+        uint32_t size = v.size();
         out.insert(out.end(), reinterpret_cast<const uint8_t*>(&size), reinterpret_cast<const uint8_t*>(&size) + sizeof(size));
         for (const auto& i : v)
             serialize(out, i);
@@ -130,7 +130,7 @@ namespace zn_serialize
     template<typename t>
     void serialize_map(ZnSerializeBuffer& out, const t& v)
     {
-        size_t size = v.size();
+        uint32_t size = v.size();
         out.insert(out.end(), reinterpret_cast<const uint8_t*>(&size), reinterpret_cast<const uint8_t*>(&size) + sizeof(size));
         for (const auto& i : v)
         {
@@ -164,12 +164,12 @@ namespace zn_serialize
     template<typename t>
     const uint8_t* deserialize_container(const uint8_t* begin, const uint8_t* end, t& v)
     {
-        if (begin + sizeof(size_t) > end)
+        if (begin + sizeof(uint32_t) > end)
             throw Exception("deserialize container failed, out of memery");
         auto p = begin;
-        size_t size = *reinterpret_cast<const size_t*>(p);
-        p += sizeof(size_t);
-        for (size_t i = 0; i < size; ++i)
+        uint32_t size = *reinterpret_cast<const uint32_t*>(p);
+        p += sizeof(uint32_t);
+        for (uint32_t i = 0; i < size; ++i)
         {
             typename t::value_type item;
             p = deserialize(p, end, item);
@@ -181,12 +181,12 @@ namespace zn_serialize
     template<typename t>
     const uint8_t* deserialize_set(const uint8_t* begin, const uint8_t* end, t& v)
     {
-        if (begin + sizeof(size_t) > end)
+        if (begin + sizeof(uint32_t) > end)
             throw Exception("deserialize set failed, out of memery");
         auto p = begin;
-        size_t size = *reinterpret_cast<const size_t*>(p);
-        p += sizeof(size_t);
-        for (size_t i = 0; i < size; ++i)
+        uint32_t size = *reinterpret_cast<const uint32_t*>(p);
+        p += sizeof(uint32_t);
+        for (uint32_t i = 0; i < size; ++i)
         {
             typename t::value_type item;
             p = deserialize(p, end, item);
@@ -198,12 +198,12 @@ namespace zn_serialize
     template<typename t>
     const uint8_t* deserialize_map(const uint8_t* begin, const uint8_t* end, t& v)
     {
-        if (begin + sizeof(size_t) > end)
+        if (begin + sizeof(uint32_t) > end)
             throw Exception("deserialize map failed, out of memery");
         auto p = begin;
-        size_t size = *reinterpret_cast<const size_t*>(p);
-        p += sizeof(size_t);
-        for (size_t i = 0; i < size; ++i)
+        uint32_t size = *reinterpret_cast<const uint32_t*>(p);
+        p += sizeof(uint32_t);
+        for (uint32_t i = 0; i < size; ++i)
         {
             typename t::key_type key;
             typename t::value_type::second_type item;
