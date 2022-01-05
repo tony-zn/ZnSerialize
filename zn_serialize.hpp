@@ -30,6 +30,38 @@ namespace zn_serialize
         virtual const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end) = 0;
     };
 
+    template<typename child_t, typename parent_t, typename...args>
+    struct Parent : public parent_t, public Parent<Parent<child_t, parent_t, args...>, args...>
+    {
+        typedef Parent<child_t, parent_t, args...> parent_pack_t;
+    protected:
+        void parent_serialize(child_t* child, ZnSerializeBuffer& buffer)
+        {
+            child->parent_t::serialize(buffer);
+            Parent<Parent<child_t, parent_t, args...>, args...>::parent_serialize(this, buffer);
+        }
+        const uint8_t* parent_deserialize(child_t* child, const uint8_t* begin, const uint8_t* end)
+        {
+            auto p = child->parent_t::deserialize(begin, end);
+            return Parent<Parent<child_t, parent_t, args...>, args...>::parent_deserialize(this, p, end);
+        }
+    };
+
+    template<typename child_t, typename parent_t>
+    struct Parent<child_t, parent_t> : public parent_t
+    {
+        typedef Parent<child_t, parent_t>   parent_pack_t;
+    protected:
+        void parent_serialize(child_t* child, ZnSerializeBuffer& buffer)
+        {
+            child->parent_t::serialize(buffer);
+        }
+        const uint8_t* parent_deserialize(child_t* child, const uint8_t* begin, const uint8_t* end)
+        {
+            return child->parent_t::deserialize(begin, end);
+        }
+    };
+
     template<typename t>
     void serialize(ZnSerializeBuffer& out, const t& v)
     {
@@ -226,6 +258,12 @@ namespace zn_serialize
 
 #define ZN_STRUCT(name) struct name : public zn_serialize::Struct
 
+#define ZN_STRUCT_CHILD(name, ...) struct name : public zn_serialize::Parent<name, __VA_ARGS__>
+
 #define ZN_SERIALIZE(...) void serialize(ZnSerializeBuffer& buffer){ zn_serialize::serialize(buffer, __VA_ARGS__); }\
-    void deserialize(const ZnSerializeBuffer& buffer){ zn_serialize::deserialize(buffer, __VA_ARGS__); }\
+    void deserialize(const ZnSerializeBuffer& buffer){ deserialize(buffer.data(), buffer.data() + buffer.size()); }\
     const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end){ return zn_serialize::deserialize(begin, end, __VA_ARGS__); }
+
+#define ZN_SERIALIZE_CHILD(...) void serialize(ZnSerializeBuffer& buffer){ parent_pack_t::parent_serialize(this, buffer); zn_serialize::serialize(buffer, __VA_ARGS__); }\
+    void deserialize(const ZnSerializeBuffer& buffer){ deserialize(buffer.data(), buffer.data() + buffer.size()); }\
+    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end){ auto p = parent_pack_t::parent_deserialize(this, begin, end); return zn_serialize::deserialize(p, end, __VA_ARGS__); }
