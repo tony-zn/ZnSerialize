@@ -87,7 +87,7 @@ namespace zn_serialize
     template<>
     void serialize(ZnSerializeBuffer& out, const std::string& v)
     {
-        uint32_t size = v.size();
+        uint32_t size = static_cast<uint32_t>(v.size());
         out.insert(out.end(), reinterpret_cast<const uint8_t*>(&size), reinterpret_cast<const uint8_t*>(&size) + sizeof(size));
         out.insert(out.end(), reinterpret_cast<const uint8_t*>(v.data()), reinterpret_cast<const uint8_t*>(v.data()) + size);
     }
@@ -121,7 +121,7 @@ namespace zn_serialize
     template<typename t>
     void serialize_container(ZnSerializeBuffer& out, const t& v)
     {
-        uint32_t size = v.size();
+        uint32_t size = static_cast<uint32_t>(v.size());
         out.insert(out.end(), reinterpret_cast<const uint8_t*>(&size), reinterpret_cast<const uint8_t*>(&size) + sizeof(size));
         for (const auto& i : v)
             serialize(out, i);
@@ -130,7 +130,7 @@ namespace zn_serialize
     template<typename t>
     void serialize_map(ZnSerializeBuffer& out, const t& v)
     {
-        uint32_t size = v.size();
+        uint32_t size = static_cast<uint32_t>(v.size());
         out.insert(out.end(), reinterpret_cast<const uint8_t*>(&size), reinterpret_cast<const uint8_t*>(&size) + sizeof(size));
         for (const auto& i : v)
         {
