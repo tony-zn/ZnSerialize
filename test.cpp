@@ -26,8 +26,6 @@ void test1()
     n2.deserialize(buf);
 }
 
-// 嵌套使用的类型需要用ZN_STRUCT宏定义
-// 其原理就是继承一个特殊的基类
 ZN_STRUCT(Sub)
 {
     int a;
