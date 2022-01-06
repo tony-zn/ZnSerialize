@@ -1,7 +1,7 @@
 #include "zn_serialize.hpp"
 
 // 普通序列化
-struct Normal
+ZN_STRUCT(Normal)
 {
     int a;
     double b;
@@ -94,16 +94,23 @@ ZN_STRUCT(Parent)
     ZN_SERIALIZE(aaa);
 };
 
-ZN_STRUCT_CHILD(Child, Parent, All)
+ZN_STRUCT(Child, Parent, All)
 {
     std::string name;
-    ZN_SERIALIZE_CHILD(name);
+    ZN_SERIALIZE(name);
 };
 
+ZN_STRUCT(Grandson, Child)
+{
+    std::string son[2];
+    ZN_SERIALIZE(son);
+};
 
 void test3()
 {
-    Child a;
+    Grandson a;
+    a.son[0] = "son1";
+    a.son[1] = "son2";
     a.aaa = 20;
     a.name = "test3";
 
@@ -126,7 +133,7 @@ void test3()
     a.g.insert(std::make_pair(i, 100));
     ZnSerializeBuffer buf;
     a.serialize(buf);
-    Child a2;
+    Grandson a2;
     a2.deserialize(buf);
 }
 
