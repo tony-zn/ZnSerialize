@@ -61,7 +61,7 @@ namespace zn_serialize
             return child->parent_t::deserialize(begin, end);
         }
     };
-    
+
     template<typename t>
     void serialize(ZnSerializeBuffer& out, const t& v)
     {
@@ -96,6 +96,28 @@ namespace zn_serialize
         if (p + size > end)
             throw Exception("deserialize string failed, out of memery");
         v.assign(p, p + size);
+        return p + size;
+    }
+
+    template<>
+    void serialize(ZnSerializeBuffer& out, const std::wstring& v)
+    {
+        uint32_t size = static_cast<uint32_t>(v.size() * sizeof(wchar_t));
+        out.insert(out.end(), reinterpret_cast<const uint8_t*>(&size), reinterpret_cast<const uint8_t*>(&size) + sizeof(size));
+        out.insert(out.end(), reinterpret_cast<const uint8_t*>(v.data()), reinterpret_cast<const uint8_t*>(v.data()) + size);
+    }
+
+    template<>
+    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::wstring& v)
+    {
+        if (begin + sizeof(uint32_t) > end)
+            throw Exception("deserialize string failed, out of memery");
+        auto p = begin;
+        uint32_t size = *reinterpret_cast<const uint32_t*>(p);
+        p += sizeof(uint32_t);
+        if (p + size > end)
+            throw Exception("deserialize string failed, out of memery");
+        v.assign(reinterpret_cast<const wchar_t*>(p), reinterpret_cast<const wchar_t*>(p + size));
         return p + size;
     }
 
@@ -283,11 +305,19 @@ namespace zn_serialize
             Parent<t, parents_t...>::parent_pack_t::parent_serialize(child, buffer);
             zn_serialize::serialize(buffer, args...);
         }
+        void auto_adapt_serialize(t* child, ZnSerializeBuffer& buffer)
+        {
+            Parent<t, parents_t...>::parent_pack_t::parent_serialize(child, buffer);
+        }
         template<typename ...args_t>
         const uint8_t* auto_adapt_deserialize(t* child, const uint8_t* begin, const uint8_t* end, args_t&...args)
         {
             auto p = Parent<t, parents_t...>::parent_pack_t::parent_deserialize(child, begin, end);
             return zn_serialize::deserialize(p, end, args...);
+        }
+        const uint8_t* auto_adapt_deserialize(t* child, const uint8_t* begin, const uint8_t* end)
+        {
+            return Parent<t, parents_t...>::parent_pack_t::parent_deserialize(child, begin, end);
         }
     };
 
@@ -308,8 +338,8 @@ namespace zn_serialize
     };
 };
 
-#define ZN_STRUCT(name, ...) struct name : public zn_serialize::AutoAdaptBase<name, ##__VA_ARGS__>
+#define ZN_STRUCT(name,...) struct name : public zn_serialize::AutoAdaptBase<name, ##__VA_ARGS__>
 
-#define ZN_SERIALIZE(...) void serialize(ZnSerializeBuffer& buffer){ auto_adapt_serialize(this, buffer, __VA_ARGS__); }\
-        void deserialize(const ZnSerializeBuffer& buffer){ deserialize(buffer.data(), buffer.data() + buffer.size()); }\
-        const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end){ return auto_adapt_deserialize(this, begin, end, __VA_ARGS__); }
+#define ZN_SERIALIZE(...)   void serialize(ZnSerializeBuffer& buffer){ auto_adapt_serialize(this, buffer, ##__VA_ARGS__); }\
+                            void deserialize(const ZnSerializeBuffer& buffer){ deserialize(buffer.data(), buffer.data() + buffer.size()); }\
+                            const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end){ return auto_adapt_deserialize(this, begin, end, ##__VA_ARGS__); }
