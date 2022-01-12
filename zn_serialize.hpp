@@ -8,6 +8,7 @@
 #include <set>
 #include <stack>
 #include <queue>
+#include <tuple>
 
 typedef std::vector<uint8_t> ZnSerializeBuffer;
 
@@ -119,6 +120,46 @@ namespace zn_serialize
             throw Exception("deserialize string failed, out of memery");
         v.assign(reinterpret_cast<const wchar_t*>(p), reinterpret_cast<const wchar_t*>(p + size));
         return p + size;
+    }
+
+    template<size_t i, typename...t>
+    struct ForeachTuple
+    {
+        void serialize(ZnSerializeBuffer& out, const std::tuple<t...>& tuple)
+        {
+            ForeachTuple<i-1, t...>().serialize(out, tuple);
+            zn_serialize::serialize(out, std::get<i>(tuple));
+        }
+        const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::tuple<t...>& tuple)
+        {
+            auto p = ForeachTuple<i-1, t...>().deserialize(begin, end, tuple);
+            return zn_serialize::deserialize(p, end, std::get<i>(tuple));
+        }
+    };
+
+    template<typename...t>
+    struct ForeachTuple<0, t...>
+    {
+        void serialize(ZnSerializeBuffer& out, const std::tuple<t...>& tuple)
+        {
+            zn_serialize::serialize(out, std::get<0>(tuple));
+        }
+        const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::tuple<t...>& tuple)
+        {
+            return zn_serialize::deserialize(begin, end, std::get<0>(tuple));
+        }
+    };
+
+    template<typename...t>
+    void serialize(ZnSerializeBuffer& out, const std::tuple<t...>& v)
+    {
+        ForeachTuple<sizeof...(t)-1, t...>().serialize(out, v);
+    }
+
+    template<typename...t>
+    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::tuple<t...>& v)
+    {
+        return ForeachTuple<sizeof...(t)-1, t...>().deserialize(begin, end, v);
     }
 
     template<typename t, uint32_t s>
