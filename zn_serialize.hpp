@@ -26,6 +26,7 @@ namespace zn_serialize
     };
     struct Struct
     {
+        typedef Struct ZnSerialize;
         virtual void serialize(ZnSerializeBuffer& buffer) = 0;
         virtual void deserialize(const ZnSerializeBuffer& buffer) = 0;
         virtual const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end) = 0;
@@ -63,19 +64,47 @@ namespace zn_serialize
         }
     };
 
+    template<typename t> t* get_zn_struct(double);
+    template<typename t> typename t::ZnSerialize* get_zn_struct(int);
+    template<typename t> struct GetZnStructPtr { typedef decltype(get_zn_struct<t>(0)) Ptr;};
+
     template<typename t>
-    void serialize(ZnSerializeBuffer& out, const t& v)
+    void default_serialize(ZnSerializeBuffer& out, const t& v, t* p)
     {
         out.insert(out.end(), reinterpret_cast<const uint8_t*>(&v), reinterpret_cast<const uint8_t*>(&v) + sizeof(v));
     }
 
     template<typename t>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, t& v)
+    void default_serialize(ZnSerializeBuffer& out, const t& v, Struct* p)
+    {
+        p->serialize(out);
+    }
+
+    template<typename t>
+    const uint8_t* default_deserialize(const uint8_t* begin, const uint8_t* end, t& v, t* p)
     {
         if (begin + sizeof(v) > end)
             throw Exception("deserialize value failed, out of memery");
         v = *reinterpret_cast<const t*>(begin);
         return begin + sizeof(v);
+    }
+
+    template<typename t>
+    const uint8_t* default_deserialize(const uint8_t* begin, const uint8_t* end, t& v, Struct* p)
+    {
+        return p->deserialize(begin, end);
+    }
+
+    template<typename t>
+    void serialize(ZnSerializeBuffer& out, const t& v)
+    {
+        default_serialize(out, v, (typename GetZnStructPtr<t>::Ptr)&v);
+    }
+
+    template<typename t>
+    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, t& v)
+    {
+        return default_deserialize(begin, end, v, (typename GetZnStructPtr<t>::Ptr)&v);
     }
 
     template<>
@@ -381,6 +410,6 @@ namespace zn_serialize
 
 #define ZN_STRUCT(name,...) struct name : public zn_serialize::AutoAdaptBase<name, ##__VA_ARGS__>
 
-#define ZN_SERIALIZE(...)   void serialize(ZnSerializeBuffer& buffer){ auto_adapt_serialize(this, buffer, ##__VA_ARGS__); }\
+#define ZN_SERIALIZE(...)   void serialize(ZnSerializeBuffer& buffer){ this->auto_adapt_serialize(this, buffer, ##__VA_ARGS__); }\
                             void deserialize(const ZnSerializeBuffer& buffer){ deserialize(buffer.data(), buffer.data() + buffer.size()); }\
-                            const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end){ return auto_adapt_deserialize(this, begin, end, ##__VA_ARGS__); }
+                            const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end){ return this->auto_adapt_deserialize(this, begin, end, ##__VA_ARGS__); }
