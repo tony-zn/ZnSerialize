@@ -21,11 +21,14 @@ void test1()
     n1.d = "test1";
     n1.e = "with out";
     ZnSerializeBuffer buf;
+    // 序列化
     n1.serialize(buf);
+    // 反序列化
     Normal n2;
     n2.deserialize(buf);
 }
 
+// 结构体嵌套使用
 ZN_STRUCT(Sub)
 {
     int a;
@@ -101,7 +104,9 @@ ZN_STRUCT(Child, Parent, All)
 ZN_STRUCT(Grandson, Child)
 {
     std::string son[2];
-    ZN_SERIALIZE(son);
+    std::wstring wstr;
+    std::tuple<int ,double ,float> tu;
+    ZN_SERIALIZE(son, wstr, tu);
 };
 
 void test3()
@@ -129,16 +134,54 @@ void test3()
     a.e.insert(i);
     a.f["test"] = i;
     a.g.insert(std::make_pair(i, 100));
+    a.wstr = L"wstring还原的会话内容wstring";
+    std::get<0>(a.tu) = 1;
+    std::get<1>(a.tu) = 2.2;
+    std::get<2>(a.tu) = 3.3f;
     ZnSerializeBuffer buf;
     a.serialize(buf);
     Grandson a2;
     a2.deserialize(buf);
 }
 
+// 当结构体为模板时不能直接用宏，只能手动继承基类
+template<typename t>
+struct Template : public zn_serialize::AutoAdaptBase<Template<t>, Normal>
+{
+    t value;
+    ZN_SERIALIZE(value);
+};
+
+ZN_STRUCT(CTemp)
+{
+    std::vector<Template<int>> v1;
+    std::vector<Template<double>> v2;
+    ZN_SERIALIZE(v1, v2);
+};
+
+void test4()
+{
+    Template<int> t1; 
+    t1.value = 5; 
+    t1.a = 100;
+    Template<double> t2; 
+    t2.value = 5.5;
+    t2.b = 100.001;
+    CTemp ct; 
+    ct.v1.push_back(t1); 
+    ct.v2.push_back(t2);
+    ZnSerializeBuffer buf;
+    ct.serialize(buf);
+    CTemp ct2;
+    ct2.deserialize(buf);
+}
+
+
 int main()
 {
     test1();
     test2();
     test3();
+    test4();
     return 0;
 }
