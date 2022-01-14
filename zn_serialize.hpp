@@ -1,3 +1,9 @@
+/*
+ * 基于C++11的字节序列化工具
+ * gitee地址: https://gitee.com/tony_zn/zn-serialize
+ * github地址: https://github.com/tony-zn/ZnSerialize
+ * 作者: tony.zn
+*/
 #pragma once
 #include <stdint.h>
 #include <string>
@@ -98,13 +104,13 @@ namespace zn_serialize
     template<typename t>
     void serialize(ZnSerializeBuffer& out, const t& v)
     {
-        default_serialize(out, v, (typename GetZnStructPtr<t>::Ptr)&v);
+        default_serialize(out, v, static_cast<typename GetZnStructPtr<t>::Ptr>(const_cast<t*>(&v)));
     }
 
     template<typename t>
     const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, t& v)
     {
-        return default_deserialize(begin, end, v, (typename GetZnStructPtr<t>::Ptr)&v);
+        return default_deserialize(begin, end, v, static_cast<typename GetZnStructPtr<t>::Ptr>(const_cast<t*>(&v)));
     }
 
     template<>
