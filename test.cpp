@@ -1,4 +1,4 @@
-#include "zn_serialize.hpp"
+﻿#include "zn_serialize.hpp"
 
 // 普通序列化
 ZN_STRUCT(Normal)
@@ -176,6 +176,56 @@ void test4()
     ct2.deserialize(buf);
 }
 
+#include<fstream>
+// 将数据结构字节流保存为文件
+void test5()
+{
+    Grandson a;
+    a.son[0] = "son1";
+    a.son[1] = "son2";
+    a.aaa = 20;
+    a.name = "test3";
+
+    Item i;
+    i.a.a = 10;
+    i.a.b = 900.99;
+    i.a.c = 12.12f;
+    i.a.d = "test serialize 1";
+    i.b.a = 20;
+    i.b.b = 200.22;
+    i.b.c = 9.9f;
+    i.b.d = "test serialize 2";
+
+    a.a.push_back(i);
+    a.b.push_back(i);
+    a.c.push_back(i);
+    a.d.insert(i);
+    a.e.insert(i);
+    a.f["test"] = i;
+    a.g.insert(std::make_pair(i, 100));
+    a.wstr = L"wstring还原的会话内容wstring";
+    std::get<0>(a.tu) = 1;
+    std::get<1>(a.tu) = 2.2;
+    std::get<2>(a.tu) = 3.3f;
+    ZnSerializeBuffer buf;
+    a.serialize(buf);
+    std::ofstream ofs("data", std::fstream::binary);
+    ofs.write(reinterpret_cast<const char*>(buf.data()), buf.size());
+}
+// 从文件读取字节流反序列化测试完整性
+void test6()
+{
+    std::ifstream ifs("data", std::fstream::binary);
+    if (!ifs.is_open())
+        return;
+    ifs.seekg(0, std::fstream::end);
+    size_t size = static_cast<size_t>(ifs.tellg());
+    ifs.seekg(0, std::fstream::beg);
+    ZnSerializeBuffer buf(size, 0);
+    ifs.read(reinterpret_cast<char*>(buf.data()), buf.size());
+    Grandson a;
+    a.deserialize(buf);
+}
 
 int main()
 {
@@ -183,5 +233,7 @@ int main()
     test2();
     test3();
     test4();
+    test5();
+    test6();
     return 0;
 }

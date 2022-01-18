@@ -1,4 +1,4 @@
-/*
+﻿/*
  * 基于C++11的字节序列化工具
  * gitee地址: https://gitee.com/tony_zn/zn-serialize
  * github地址: https://github.com/tony-zn/ZnSerialize
