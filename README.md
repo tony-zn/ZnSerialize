@@ -25,26 +25,26 @@ ZN_STRUCT(Normal)
     double b;
     float c;
     std::string d;
-    std::string e;
-    // 未在宏类指定的成员不会序列化
-    ZN_SERIALIZE(a,b,c,d);
+    std::wstring e;
+    std::tuple<int ,double ,float> f;
+    std::string g;
+    // 未在宏类指定的成员g不会序列化
+    // 同时znset接口也不会对它赋值
+    ZN_SERIALIZE(a,b,c,d,e,f);
 };
 
 int main()
 {
     // 像正常的结构体一样使用
-    Normal n1;
-    n1.a = 11;
-    n1.b = 22.22;
-    n1.c = 111.111f;
-    n1.d = "test1";
-    n1.e = "with out";
-    ZnSerializeBuffer buf;
+    normal.a = 1;
+    // 增加了一个类似初始化列表的赋值接口
+    normal.znset(11, 22.22, 111.111f, "string", L"wstring", std::make_tuple(111,222.222, 333.333f), "with out");
+     ZnSerializeBuffer buf;
     // 序列化
-    n1.serialize(buf);
-    // 反序列化
-    Normal n2;
-    n2.deserialize(buf);
+    normal.serialize(buf);
+    // 反序列化为新的对象
+    Normal new_normal;
+    new_normal.deserialize(buf);
     return 0;
 }
 ```

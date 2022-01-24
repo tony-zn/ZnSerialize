@@ -7,141 +7,91 @@ ZN_STRUCT(Normal)
     double b;
     float c;
     std::string d;
-    std::string e;
-    // 未在宏类指定的成员不会序列化
-    ZN_SERIALIZE(a,b,c,d);
+    std::wstring e;
+    std::tuple<int ,double ,float> f;
+    std::string g;
+    // 未在宏类指定的成员g不会序列化
+    // 同时znset接口也不会对它赋值
+    ZN_SERIALIZE(a,b,c,d,e,f);
 };
 
-void test1()
+void test1(Normal& normal)
 {
-    Normal n1;
-    n1.a = 11;
-    n1.b = 22.22;
-    n1.c = 111.111f;
-    n1.d = "test1";
-    n1.e = "with out";
+    // 增加了一个类似初始化列表的赋值接口
+    normal.znset(11, 22.22, 111.111f, "string", L"wstring", std::make_tuple(111,222.222, 333.333f), "with out");
     ZnSerializeBuffer buf;
     // 序列化
-    n1.serialize(buf);
-    // 反序列化
-    Normal n2;
-    n2.deserialize(buf);
+    normal.serialize(buf);
+    // 反序列化为新的对象
+    Normal new_normal;
+    new_normal.deserialize(buf);
 }
 
 // 结构体嵌套使用
-ZN_STRUCT(Sub)
+ZN_STRUCT(Used)
 {
-    int a;
-    double b;
-    float c;
-    std::string d;
-    ZN_SERIALIZE(a,b,c,d);
-};
-
-ZN_STRUCT(Item)
-{
-    Sub a;
-    Sub b;
-    ZN_SERIALIZE(a,b);
+    Normal n1;
+    Normal n2;
+    ZN_SERIALIZE(n1, n2);
     // 容器需要的排序运行符
-    bool operator <(const Item& o) const {return a.a < o.a.a;}
+    bool operator <(const Used& o) const {return n1.a < o.n1.a;}
 };
 
-ZN_STRUCT(All)
+// 对标准容器的支持
+ZN_STRUCT(Container)
 {
-    std::vector<Item> a;
-    std::deque<Item> b;
-    std::list<Item> c;
-    std::set<Item> d;
-    std::multiset<Item> e;
-    std::map<std::string, Item> f;
-    std::multimap<Item, int> g;
-    ZN_SERIALIZE(a,b,c,d,e,f,g);
+    std::vector<Used> vector;
+    std::deque<Used> deque;
+    std::list<Used> list;
+    std::set<Used> std_set;
+    std::multiset<Used> multiset;
+    std::map<std::string, Used> map;
+    std::multimap<Used, int> multimap;
+    ZN_SERIALIZE(vector,deque,list,std_set,multiset,map,multimap);
 };
 
-void test2()
+void test2(Container& container, Normal& normal)
 {
-    Item i;
-    i.a.a = 10;
-    i.a.b = 900.99;
-    i.a.c = 12.12f;
-    i.a.d = "test serialize 1";
-    i.b.a = 20;
-    i.b.b = 200.22;
-    i.b.c = 9.9f;
-    i.b.d = "test serialize 2";
+    Used used;
+    used.znset(normal, normal);
     ZnSerializeBuffer buf;
-    i.serialize(buf);
-    Item i2;
-    i2.deserialize(buf);
-    All a;
-    a.a.push_back(i);
-    a.b.push_back(i);
-    a.c.push_back(i);
-    a.d.insert(i);
-    a.e.insert(i);
-    a.f["test"] = i;
-    a.g.insert(std::make_pair(i, 100));
+    used.serialize(buf);
+    Used new_used;
+    new_used.deserialize(buf);
+    container.vector.push_back(used);
+    container.vector.push_back(new_used);
+    container.deque.push_back(used);
+    container.deque.push_back(new_used);
+    container.list.push_back(used);
+    container.list.push_back(new_used);
+    container.std_set.insert(used);
+    container.std_set.insert(new_used);
+    container.multiset.insert(used);
+    container.multiset.insert(new_used);
+    container.map["used"] = used;
+    container.map["new_used"] = new_used;
+    container.multimap.insert(std::make_pair(used, 1));
+    container.multimap.insert(std::make_pair(new_used, 2));
     buf.clear();
-    a.serialize(buf);
-    All a2;
-    a2.deserialize(buf);
+    container.serialize(buf);
+    Container new_container;
+    new_container.deserialize(buf);
 }
 
-// 测试数据结构的继承
-ZN_STRUCT(Parent)
-{
-    int aaa;
-    ZN_SERIALIZE(aaa);
-};
-
-ZN_STRUCT(Child, Parent, All)
+// 测试数据结构的多继承
+ZN_STRUCT(Child, Container, Normal)
 {
     std::string name;
     ZN_SERIALIZE(name);
 };
 
-ZN_STRUCT(Grandson, Child)
+void test3(Child& child)
 {
-    std::string son[2];
-    std::wstring wstr;
-    std::tuple<int ,double ,float> tu;
-    ZN_SERIALIZE(son, wstr, tu);
-};
-
-void test3()
-{
-    Grandson a;
-    a.son[0] = "son1";
-    a.son[1] = "son2";
-    a.aaa = 20;
-    a.name = "test3";
-
-    Item i;
-    i.a.a = 10;
-    i.a.b = 900.99;
-    i.a.c = 12.12f;
-    i.a.d = "test serialize 1";
-    i.b.a = 20;
-    i.b.b = 200.22;
-    i.b.c = 9.9f;
-    i.b.d = "test serialize 2";
-
-    a.a.push_back(i);
-    a.b.push_back(i);
-    a.c.push_back(i);
-    a.d.insert(i);
-    a.e.insert(i);
-    a.f["test"] = i;
-    a.g.insert(std::make_pair(i, 100));
-    a.wstr = L"wstring还原的会话内容wstring";
-    std::get<0>(a.tu) = 1;
-    std::get<1>(a.tu) = 2.2;
-    std::get<2>(a.tu) = 3.3f;
+    child.name = "child";
     ZnSerializeBuffer buf;
-    a.serialize(buf);
-    Grandson a2;
-    a2.deserialize(buf);
+    child.serialize(buf);
+    Child new_child;
+    new_child.deserialize(buf);
 }
 
 // 当结构体为模板时不能直接用宏，只能手动继承基类
@@ -152,63 +102,31 @@ struct Template : public zn_serialize::AutoAdaptBase<Template<t>, Normal>
     ZN_SERIALIZE(value);
 };
 
-ZN_STRUCT(CTemp)
-{
-    std::vector<Template<int>> v1;
-    std::vector<Template<double>> v2;
-    ZN_SERIALIZE(v1, v2);
-};
-
 void test4()
 {
     Template<int> t1; 
     t1.value = 5; 
-    t1.a = 100;
+    // 基类成员的设置要指明基类
+    t1.Normal::znset(1, 2.2, 3.3f, "string1", L"wstring1", std::make_tuple(111,222.222, 333.333f), "with out");
     Template<double> t2; 
     t2.value = 5.5;
-    t2.b = 100.001;
-    CTemp ct; 
-    ct.v1.push_back(t1); 
-    ct.v2.push_back(t2);
+    t2.Normal::znset(100, 200.2, 300.3f, "string2", L"wstring", std::make_tuple(100,200.222, 300.333f), "with out");
     ZnSerializeBuffer buf;
-    ct.serialize(buf);
-    CTemp ct2;
-    ct2.deserialize(buf);
+    t1.serialize(buf);
+    Template<int> new_t1;
+    new_t1.deserialize(buf);
+    buf.clear();
+    t2.serialize(buf);
+    Template<double> new_t2;
+    new_t2.deserialize(buf);
 }
 
 #include<fstream>
 // 将数据结构字节流保存为文件
-void test5()
+void test5(Child& child)
 {
-    Grandson a;
-    a.son[0] = "son1";
-    a.son[1] = "son2";
-    a.aaa = 20;
-    a.name = "test3";
-
-    Item i;
-    i.a.a = 10;
-    i.a.b = 900.99;
-    i.a.c = 12.12f;
-    i.a.d = "test serialize 1";
-    i.b.a = 20;
-    i.b.b = 200.22;
-    i.b.c = 9.9f;
-    i.b.d = "test serialize 2";
-
-    a.a.push_back(i);
-    a.b.push_back(i);
-    a.c.push_back(i);
-    a.d.insert(i);
-    a.e.insert(i);
-    a.f["test"] = i;
-    a.g.insert(std::make_pair(i, 100));
-    a.wstr = L"wstring还原的会话内容wstring";
-    std::get<0>(a.tu) = 1;
-    std::get<1>(a.tu) = 2.2;
-    std::get<2>(a.tu) = 3.3f;
     ZnSerializeBuffer buf;
-    a.serialize(buf);
+    child.serialize(buf);
     std::ofstream ofs("data", std::fstream::binary);
     ofs.write(reinterpret_cast<const char*>(buf.data()), buf.size());
 }
@@ -223,17 +141,31 @@ void test6()
     ifs.seekg(0, std::fstream::beg);
     ZnSerializeBuffer buf(size, 0);
     ifs.read(reinterpret_cast<char*>(buf.data()), buf.size());
-    Grandson a;
-    a.deserialize(buf);
+    Child child;
+    child.deserialize(buf);
 }
+
+ZN_STRUCT(Empty, Used, Normal)
+{
+    ZN_SERIALIZE();
+};
 
 int main()
 {
-    test1();
-    test2();
-    test3();
+    Child child;
+    test1(child);
+    test2(child, child);
+    test3(child);
     test4();
-    test5();
+    test5(child);
     test6();
+
+    Empty emp;
+    emp.Used::znset(child, child);
+    emp.Normal::znset(child.a, child.b, child.c, child.d, child.e, child.f, child.g);
+#if ZN_VA_OPT_SUPPORTED == 1
+    // 当编译器不支持__VA_OPT__时，调用空结构体的znset接口会报定义错误
+    emp.znset();
+#endif
     return 0;
 }

@@ -15,6 +15,7 @@
 #include <stack>
 #include <queue>
 #include <tuple>
+#include <memory>
 
 typedef std::vector<uint8_t> ZnSerializeBuffer;
 
@@ -113,6 +114,20 @@ namespace zn_serialize
         return default_deserialize(begin, end, v, static_cast<typename GetZnStructPtr<t>::Ptr>(const_cast<t*>(&v)));
     }
 
+    template<typename t>
+    void serialize(ZnSerializeBuffer& out, const std::shared_ptr<t>& v)
+    {
+        serialize(out, *v);
+    }
+
+    template<typename t>
+    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::shared_ptr<t>& v)
+    {
+        if (!v)
+            v = std::make_shared<t>();
+        return deserialize(begin, end, *v);
+    }
+
     template<>
     void serialize(ZnSerializeBuffer& out, const std::string& v)
     {
@@ -200,23 +215,15 @@ namespace zn_serialize
     template<typename t, uint32_t s>
     void serialize(ZnSerializeBuffer& out, const t(&v)[s])
     {
-        uint32_t size = s;
-        out.insert(out.end(), reinterpret_cast<const uint8_t*>(&size), reinterpret_cast<const uint8_t*>(&size) + sizeof(size));
-        for (uint32_t i = 0; i < size; ++i)
+        for (uint32_t i = 0; i < s; ++i)
             serialize(out, v[i]);
     }
 
     template<typename t, uint32_t s>
     const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, t(&v)[s])
     {
-        if (begin + sizeof(uint32_t) > end)
-            throw Exception("deserialize string failed, out of memery");
         auto p = begin;
-        uint32_t size = *reinterpret_cast<const uint32_t*>(p);
-        if (size != s)
-            throw Exception("deserialize array failed, size mismatch");
-        p += sizeof(uint32_t);
-        for (uint32_t i = 0; i < size; ++i)
+        for (uint32_t i = 0; i < s; ++i)
             p = deserialize(p, end, v[i]);
         return p;
     }
@@ -412,10 +419,67 @@ namespace zn_serialize
             return zn_serialize::deserialize(begin, end, args...);
         }
     };
+
+    template<typename first_member_t, typename...other_members_t>
+    struct AssignmentMembers
+    {
+        template<typename first_value_t, typename...other_values_t>
+        void operator()(first_member_t& first_member, other_members_t&...other_members
+            , const first_value_t& first_value, const other_values_t&...other_values)
+        {
+            first_member = first_value;
+            AssignmentMembers<other_members_t...>()(other_members..., other_values...);
+        }
+        template<typename first_value_t>
+        void operator()(first_member_t& first_member, other_members_t&...other_members, const first_value_t& first_value)
+        {
+            first_member = first_value;
+        }
+    };
+
+    template<typename first_member_t>
+    struct AssignmentMembers<first_member_t>
+    {
+        template<typename first_value_t, typename...other_values_t>
+        void operator()(first_member_t& first_member, const first_value_t& first_value, const other_values_t&...other_values)
+        {
+            first_member = first_value;
+        }
+    };
+
+    template<>
+    struct AssignmentMembers<void>
+    {
+        template<typename...values_t>
+        void operator()(const values_t&...values)
+        {}
+    };
+
+    template<typename...members_t>
+    AssignmentMembers<members_t...> get_assignment_members_type(members_t&...);
+
+    AssignmentMembers<void> get_assignment_members_type();
 };
 
-#define ZN_STRUCT(name,...) struct name : public zn_serialize::AutoAdaptBase<name, ##__VA_ARGS__>
+// 通过 ZN_VA_OPT_SUPPORTED 宏来自动判断是否支持 __VA_OPT__
+#define ZN_PP_THIRD_ARG(a,b,c,...) c
+#define ZN_VA_OPT_SUPPORTED_I(...) ZN_PP_THIRD_ARG(__VA_OPT__(,),1,0,)
+#define ZN_VA_OPT_SUPPORTED ZN_VA_OPT_SUPPORTED_I(?)
 
-#define ZN_SERIALIZE(...)   void serialize(ZnSerializeBuffer& buffer){ this->auto_adapt_serialize(this, buffer, ##__VA_ARGS__); }\
-                            void deserialize(const ZnSerializeBuffer& buffer){ deserialize(buffer.data(), buffer.data() + buffer.size()); }\
-                            const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end){ return this->auto_adapt_deserialize(this, begin, end, ##__VA_ARGS__); }
+#if ZN_VA_OPT_SUPPORTED == 0
+
+#define ZN_STRUCT(name,...)     struct name : public zn_serialize::AutoAdaptBase<name, ##__VA_ARGS__>
+#define ZN_SERIALIZE(...)       void serialize(ZnSerializeBuffer& buffer){ this->auto_adapt_serialize(this, buffer, ##__VA_ARGS__); }\
+                                void deserialize(const ZnSerializeBuffer& buffer){ deserialize(buffer.data(), buffer.data() + buffer.size()); }\
+                                const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end){ return this->auto_adapt_deserialize(this, begin, end, ##__VA_ARGS__); }\
+                                template<typename...values_t> void znset(const values_t&...other_values){decltype(zn_serialize::get_assignment_members_type(__VA_ARGS__))()(__VA_ARGS__,other_values...);}
+
+#else
+
+#define ZN_STRUCT(name,...)     struct name : public zn_serialize::AutoAdaptBase<name __VA_OPT__(,) __VA_ARGS__>
+#define ZN_SERIALIZE(...)       void serialize(ZnSerializeBuffer& buffer){ this->auto_adapt_serialize(this, buffer __VA_OPT__(,) __VA_ARGS__); }\
+                                void deserialize(const ZnSerializeBuffer& buffer){ deserialize(buffer.data(), buffer.data() + buffer.size()); }\
+                                const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end){ return this->auto_adapt_deserialize(this, begin, end __VA_OPT__(,) __VA_ARGS__); }\
+                                template<typename...values_t> void znset(const values_t&...other_values){decltype(zn_serialize::get_assignment_members_type(__VA_ARGS__))()(__VA_ARGS__ __VA_OPT__(,) other_values...);}
+
+#endif
