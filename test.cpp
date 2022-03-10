@@ -1,4 +1,4 @@
-﻿#include "zn_serialize.hpp"
+#include "zn_serialize.hpp"
 
 // 普通序列化
 ZN_STRUCT(Normal)
@@ -40,7 +40,7 @@ ZN_STRUCT(Used)
 // 对标准容器的支持
 ZN_STRUCT(Container)
 {
-    std::vector<Used> vector;
+    std::vector<std::shared_ptr<Used>> vector;
     std::deque<Used> deque;
     std::list<Used> list;
     std::set<Used> std_set;
@@ -52,25 +52,25 @@ ZN_STRUCT(Container)
 
 void test2(Container& container, Normal& normal)
 {
-    Used used;
-    used.znset(normal, normal);
+    std::shared_ptr<Used> used = std::make_shared<Used>();
+    used->znset(normal, normal);
     ZnSerializeBuffer buf;
-    used.serialize(buf);
+    used->serialize(buf);
     Used new_used;
     new_used.deserialize(buf);
     container.vector.push_back(used);
-    container.vector.push_back(new_used);
-    container.deque.push_back(used);
+    container.vector.push_back(used);
+    container.deque.push_back(*used);
     container.deque.push_back(new_used);
-    container.list.push_back(used);
+    container.list.push_back(*used);
     container.list.push_back(new_used);
-    container.std_set.insert(used);
+    container.std_set.insert(*used);
     container.std_set.insert(new_used);
-    container.multiset.insert(used);
+    container.multiset.insert(*used);
     container.multiset.insert(new_used);
-    container.map["used"] = used;
+    container.map["used"] = *used;
     container.map["new_used"] = new_used;
-    container.multimap.insert(std::make_pair(used, 1));
+    container.multimap.insert(std::make_pair(*used, 1));
     container.multimap.insert(std::make_pair(new_used, 2));
     buf.clear();
     container.serialize(buf);
