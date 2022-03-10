@@ -1,4 +1,4 @@
-﻿/*
+/*
  * 基于C++11的字节序列化工具
  * gitee地址: https://gitee.com/tony_zn/zn-serialize
  * github地址: https://github.com/tony-zn/ZnSerialize
@@ -34,7 +34,7 @@ namespace zn_serialize
     struct Struct
     {
         typedef Struct ZnSerialize;
-        virtual void serialize(ZnSerializeBuffer& buffer) = 0;
+        virtual void serialize(ZnSerializeBuffer& buffer) const = 0;
         virtual void deserialize(const ZnSerializeBuffer& buffer) = 0;
         virtual const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end) = 0;
     };
@@ -71,24 +71,24 @@ namespace zn_serialize
         }
     };
 
-    template<typename t> t* get_zn_struct(double);
-    template<typename t> typename t::ZnSerialize* get_zn_struct(int);
+    template<typename t> inline t* get_zn_struct(double);
+    template<typename t> inline typename t::ZnSerialize* get_zn_struct(int);
     template<typename t> struct GetZnStructPtr { typedef decltype(get_zn_struct<t>(0)) Ptr;};
 
     template<typename t>
-    void default_serialize(ZnSerializeBuffer& out, const t& v, t* p)
+    inline void default_serialize(ZnSerializeBuffer& out, const t& v, t* p)
     {
         out.insert(out.end(), reinterpret_cast<const uint8_t*>(&v), reinterpret_cast<const uint8_t*>(&v) + sizeof(v));
     }
 
     template<typename t>
-    void default_serialize(ZnSerializeBuffer& out, const t& v, Struct* p)
+    inline void default_serialize(ZnSerializeBuffer& out, const t& v, Struct* p)
     {
         p->serialize(out);
     }
 
     template<typename t>
-    const uint8_t* default_deserialize(const uint8_t* begin, const uint8_t* end, t& v, t* p)
+    inline const uint8_t* default_deserialize(const uint8_t* begin, const uint8_t* end, t& v, t* p)
     {
         if (begin + sizeof(v) > end)
             throw Exception("deserialize value failed, out of memery");
@@ -97,31 +97,31 @@ namespace zn_serialize
     }
 
     template<typename t>
-    const uint8_t* default_deserialize(const uint8_t* begin, const uint8_t* end, t& v, Struct* p)
+    inline const uint8_t* default_deserialize(const uint8_t* begin, const uint8_t* end, t& v, Struct* p)
     {
         return p->deserialize(begin, end);
     }
 
     template<typename t>
-    void serialize(ZnSerializeBuffer& out, const t& v)
+    inline void serialize(ZnSerializeBuffer& out, const t& v)
     {
         default_serialize(out, v, static_cast<typename GetZnStructPtr<t>::Ptr>(const_cast<t*>(&v)));
     }
 
     template<typename t>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, t& v)
+    inline const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, t& v)
     {
         return default_deserialize(begin, end, v, static_cast<typename GetZnStructPtr<t>::Ptr>(const_cast<t*>(&v)));
     }
 
     template<typename t>
-    void serialize(ZnSerializeBuffer& out, const std::shared_ptr<t>& v)
+    inline void serialize(ZnSerializeBuffer& out, const std::shared_ptr<t>& v)
     {
         serialize(out, *v);
     }
 
     template<typename t>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::shared_ptr<t>& v)
+    inline const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::shared_ptr<t>& v)
     {
         if (!v)
             v = std::make_shared<t>();
@@ -129,7 +129,7 @@ namespace zn_serialize
     }
 
     template<>
-    void serialize(ZnSerializeBuffer& out, const std::string& v)
+    inline void serialize(ZnSerializeBuffer& out, const std::string& v)
     {
         uint32_t size = static_cast<uint32_t>(v.size());
         out.insert(out.end(), reinterpret_cast<const uint8_t*>(&size), reinterpret_cast<const uint8_t*>(&size) + sizeof(size));
@@ -137,7 +137,7 @@ namespace zn_serialize
     }
 
     template<>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::string& v)
+    inline const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::string& v)
     {
         if (begin + sizeof(uint32_t) > end)
             throw Exception("deserialize string failed, out of memery");
@@ -151,7 +151,7 @@ namespace zn_serialize
     }
 
     template<>
-    void serialize(ZnSerializeBuffer& out, const std::wstring& v)
+    inline void serialize(ZnSerializeBuffer& out, const std::wstring& v)
     {
         uint32_t size = static_cast<uint32_t>(v.size() * sizeof(wchar_t));
         out.insert(out.end(), reinterpret_cast<const uint8_t*>(&size), reinterpret_cast<const uint8_t*>(&size) + sizeof(size));
@@ -159,7 +159,7 @@ namespace zn_serialize
     }
 
     template<>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::wstring& v)
+    inline const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::wstring& v)
     {
         if (begin + sizeof(uint32_t) > end)
             throw Exception("deserialize string failed, out of memery");
@@ -201,26 +201,26 @@ namespace zn_serialize
     };
 
     template<typename...t>
-    void serialize(ZnSerializeBuffer& out, const std::tuple<t...>& v)
+    inline void serialize(ZnSerializeBuffer& out, const std::tuple<t...>& v)
     {
         ForeachTuple<sizeof...(t)-1, t...>().serialize(out, v);
     }
 
     template<typename...t>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::tuple<t...>& v)
+    inline const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::tuple<t...>& v)
     {
         return ForeachTuple<sizeof...(t)-1, t...>().deserialize(begin, end, v);
     }
 
     template<typename t, uint32_t s>
-    void serialize(ZnSerializeBuffer& out, const t(&v)[s])
+    inline void serialize(ZnSerializeBuffer& out, const t(&v)[s])
     {
         for (uint32_t i = 0; i < s; ++i)
             serialize(out, v[i]);
     }
 
     template<typename t, uint32_t s>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, t(&v)[s])
+    inline const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, t(&v)[s])
     {
         auto p = begin;
         for (uint32_t i = 0; i < s; ++i)
@@ -230,19 +230,19 @@ namespace zn_serialize
 
 
     template<>
-    void serialize(ZnSerializeBuffer& out, const Struct& v)
+    inline void serialize(ZnSerializeBuffer& out, const Struct& v)
     {
         const_cast<Struct&>(v).serialize(out);
     }
 
     template<>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, Struct& v)
+    inline const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, Struct& v)
     {
         return v.deserialize(begin, end);
     }
 
     template<typename t>
-    void serialize_container(ZnSerializeBuffer& out, const t& v)
+    inline void serialize_container(ZnSerializeBuffer& out, const t& v)
     {
         uint32_t size = static_cast<uint32_t>(v.size());
         out.insert(out.end(), reinterpret_cast<const uint8_t*>(&size), reinterpret_cast<const uint8_t*>(&size) + sizeof(size));
@@ -251,7 +251,7 @@ namespace zn_serialize
     }
 
     template<typename t>
-    void serialize_map(ZnSerializeBuffer& out, const t& v)
+    inline void serialize_map(ZnSerializeBuffer& out, const t& v)
     {
         uint32_t size = static_cast<uint32_t>(v.size());
         out.insert(out.end(), reinterpret_cast<const uint8_t*>(&size), reinterpret_cast<const uint8_t*>(&size) + sizeof(size));
@@ -263,29 +263,29 @@ namespace zn_serialize
     }
 
     template<typename t>
-    void serialize(ZnSerializeBuffer& out, const std::vector<t>& v) { serialize_container(out, v); }
+    inline void serialize(ZnSerializeBuffer& out, const std::vector<t>& v) { serialize_container(out, v); }
     template<typename t>
-    void serialize(ZnSerializeBuffer& out, const std::deque<t>& v) { serialize_container(out, v); }
+    inline void serialize(ZnSerializeBuffer& out, const std::deque<t>& v) { serialize_container(out, v); }
     template<typename t>
-    void serialize(ZnSerializeBuffer& out, const std::list<t>& v) { serialize_container(out, v); }
+    inline void serialize(ZnSerializeBuffer& out, const std::list<t>& v) { serialize_container(out, v); }
     template<typename t>
-    void serialize(ZnSerializeBuffer& out, const std::set<t>& v) { serialize_container(out, v); }
+    inline void serialize(ZnSerializeBuffer& out, const std::set<t>& v) { serialize_container(out, v); }
     template<typename t>
-    void serialize(ZnSerializeBuffer& out, const std::multiset<t>& v) { serialize_container(out, v); }
+    inline void serialize(ZnSerializeBuffer& out, const std::multiset<t>& v) { serialize_container(out, v); }
     template<typename t>
-    void serialize(ZnSerializeBuffer& out, const std::stack<t>& v) { throw Exception("serialize failed, not allowed on statck"); }
+    inline void serialize(ZnSerializeBuffer& out, const std::stack<t>& v) { throw Exception("serialize failed, not allowed on statck"); }
     template<typename t>
-    void serialize(ZnSerializeBuffer& out, const std::queue<t>& v) { throw Exception("serialize failed, not allowed on queue"); }
+    inline void serialize(ZnSerializeBuffer& out, const std::queue<t>& v) { throw Exception("serialize failed, not allowed on queue"); }
     template<typename t>
-    void serialize(ZnSerializeBuffer& out, const std::priority_queue<t>& v) { throw Exception("serialize failed, not allowed on priority_queue"); }
+    inline void serialize(ZnSerializeBuffer& out, const std::priority_queue<t>& v) { throw Exception("serialize failed, not allowed on priority_queue"); }
     template<typename k, typename t>
-    void serialize(ZnSerializeBuffer& out, const std::map<k, t>& v) { serialize_map(out, v); }
+    inline void serialize(ZnSerializeBuffer& out, const std::map<k, t>& v) { serialize_map(out, v); }
     template<typename k, typename t>
-    void serialize(ZnSerializeBuffer& out, const std::multimap<k, t>& v) { serialize_map(out, v); }
+    inline void serialize(ZnSerializeBuffer& out, const std::multimap<k, t>& v) { serialize_map(out, v); }
 
 
     template<typename t>
-    const uint8_t* deserialize_container(const uint8_t* begin, const uint8_t* end, t& v)
+    inline const uint8_t* deserialize_container(const uint8_t* begin, const uint8_t* end, t& v)
     {
         if (begin + sizeof(uint32_t) > end)
             throw Exception("deserialize container failed, out of memery");
@@ -302,7 +302,7 @@ namespace zn_serialize
     }
 
     template<typename t>
-    const uint8_t* deserialize_set(const uint8_t* begin, const uint8_t* end, t& v)
+    inline const uint8_t* deserialize_set(const uint8_t* begin, const uint8_t* end, t& v)
     {
         if (begin + sizeof(uint32_t) > end)
             throw Exception("deserialize set failed, out of memery");
@@ -319,7 +319,7 @@ namespace zn_serialize
     }
 
     template<typename t>
-    const uint8_t* deserialize_map(const uint8_t* begin, const uint8_t* end, t& v)
+    inline const uint8_t* deserialize_map(const uint8_t* begin, const uint8_t* end, t& v)
     {
         if (begin + sizeof(uint32_t) > end)
             throw Exception("deserialize map failed, out of memery");
@@ -338,41 +338,41 @@ namespace zn_serialize
     }
 
     template<typename t>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::vector<t>& v) { return deserialize_container(begin, end, v); }
+    inline const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::vector<t>& v) { return deserialize_container(begin, end, v); }
     template<typename t>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::deque<t>& v) { return deserialize_container(begin, end, v); }
+    inline const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::deque<t>& v) { return deserialize_container(begin, end, v); }
     template<typename t>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::list<t>& v) { return deserialize_container(begin, end, v); }
+    inline const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::list<t>& v) { return deserialize_container(begin, end, v); }
     template<typename t>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::set<t>& v) { return deserialize_set(begin, end, v); }
+    inline const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::set<t>& v) { return deserialize_set(begin, end, v); }
     template<typename t>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::multiset<t>& v) { return deserialize_set(begin, end, v); }
+    inline const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::multiset<t>& v) { return deserialize_set(begin, end, v); }
     template<typename t>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::stack<t>& v) { throw Exception("deserialize failed, not allowed on statck"); }
+    inline const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::stack<t>& v) { throw Exception("deserialize failed, not allowed on statck"); }
     template<typename t>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::queue<t>& v) { throw Exception("deserialize failed, not allowed on queue"); }
+    inline const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::queue<t>& v) { throw Exception("deserialize failed, not allowed on queue"); }
     template<typename t>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::priority_queue<t>& v) { throw Exception("deserialize failed, not allowed on priority_queue"); }
+    inline const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::priority_queue<t>& v) { throw Exception("deserialize failed, not allowed on priority_queue"); }
     template<typename k, typename t>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::map<k, t>& v) { return deserialize_map(begin, end, v); }
+    inline const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::map<k, t>& v) { return deserialize_map(begin, end, v); }
     template<typename k, typename t>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::multimap<k, t>& v) { return deserialize_map(begin, end, v); }
+    inline const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, std::multimap<k, t>& v) { return deserialize_map(begin, end, v); }
 
     template<typename t, typename...args_t>
-    void serialize(ZnSerializeBuffer& out, const t& v, const args_t&...args)
+    inline void serialize(ZnSerializeBuffer& out, const t& v, const args_t&...args)
     {
         serialize(out, v);
         serialize(out, args...);
     }
 
     template<typename t, typename...args_t>
-    const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, t& v, args_t&...args)
+    inline const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end, t& v, args_t&...args)
     {
         return deserialize(deserialize(begin, end, v), end, args...);
     }
 
     template<typename t, typename...args_t>
-    const uint8_t* deserialize(const ZnSerializeBuffer& in, t& v, args_t&...args)
+    inline const uint8_t* deserialize(const ZnSerializeBuffer& in, t& v, args_t&...args)
     {
         auto end = in.data() + in.size();
         return deserialize(deserialize(in.data(), end, v), end, args...);
@@ -456,9 +456,11 @@ namespace zn_serialize
     };
 
     template<typename...members_t>
-    AssignmentMembers<members_t...> get_assignment_members_type(members_t&...);
+    inline AssignmentMembers<members_t...> get_assignment_members_type(members_t&...);
 
-    AssignmentMembers<void> get_assignment_members_type();
+    inline AssignmentMembers<void> get_assignment_members_type();
+
+    template<typename t> inline t* cancel_const(const t* p){ return const_cast<t*>(p);}
 };
 
 // 通过 ZN_VA_OPT_SUPPORTED 宏来自动判断是否支持 __VA_OPT__
@@ -469,7 +471,7 @@ namespace zn_serialize
 #if ZN_VA_OPT_SUPPORTED == 0
 
 #define ZN_STRUCT(name,...)     struct name : public zn_serialize::AutoAdaptBase<name, ##__VA_ARGS__>
-#define ZN_SERIALIZE(...)       void serialize(ZnSerializeBuffer& buffer){ this->auto_adapt_serialize(this, buffer, ##__VA_ARGS__); }\
+#define ZN_SERIALIZE(...)       void serialize(ZnSerializeBuffer& buffer) const { zn_serialize::cancel_const(this)->auto_adapt_serialize(zn_serialize::cancel_const(this), buffer, ##__VA_ARGS__); }\
                                 void deserialize(const ZnSerializeBuffer& buffer){ deserialize(buffer.data(), buffer.data() + buffer.size()); }\
                                 const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end){ return this->auto_adapt_deserialize(this, begin, end, ##__VA_ARGS__); }\
                                 template<typename...values_t> void znset(const values_t&...other_values){decltype(zn_serialize::get_assignment_members_type(__VA_ARGS__))()(__VA_ARGS__,other_values...);}
@@ -477,7 +479,7 @@ namespace zn_serialize
 #else
 
 #define ZN_STRUCT(name,...)     struct name : public zn_serialize::AutoAdaptBase<name __VA_OPT__(,) __VA_ARGS__>
-#define ZN_SERIALIZE(...)       void serialize(ZnSerializeBuffer& buffer){ this->auto_adapt_serialize(this, buffer __VA_OPT__(,) __VA_ARGS__); }\
+#define ZN_SERIALIZE(...)       void serialize(ZnSerializeBuffer& buffer) const { zn_serialize::cancel_const(this)->auto_adapt_serialize(zn_serialize::cancel_const(this), buffer __VA_OPT__(,) __VA_ARGS__); }\
                                 void deserialize(const ZnSerializeBuffer& buffer){ deserialize(buffer.data(), buffer.data() + buffer.size()); }\
                                 const uint8_t* deserialize(const uint8_t* begin, const uint8_t* end){ return this->auto_adapt_deserialize(this, begin, end __VA_OPT__(,) __VA_ARGS__); }\
                                 template<typename...values_t> void znset(const values_t&...other_values){decltype(zn_serialize::get_assignment_members_type(__VA_ARGS__))()(__VA_ARGS__ __VA_OPT__(,) other_values...);}
